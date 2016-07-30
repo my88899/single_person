@@ -29,8 +29,10 @@ car_dist = 43;
 car_speed = 96*1000/3600;
 car_rcs = db2pow(min(10*log10(car_dist)+5,20));
 
-hcar = phased.RadarTarget('MeanRCS',car_rcs,'PropagationSpeed',c,'OperatingFrequency',fc);
-hcarplatform = phased.Platform('InitialPosition',[car_dist;0;0.5],'Velocity',[car_speed;0;0]);
+hcar = phased.RadarTarget('MeanRCS',car_rcs,'PropagationSpeed',c,...
+    'OperatingFrequency',fc);
+hcarplatform = phased.Platform('InitialPosition',[car_dist;0;0.5],.
+    'Velocity',[car_speed;0;0]);
 hchannel = phased.FreeSpace('PropagationSpeed',c,'OperatingFrequency',fc,'SampleRate',fs,'TwoWayPropagation',true);
 
 ant_aperture = 6.06e-4;                         % in square meter
@@ -72,64 +74,3 @@ for m = 1:Nsweep
 
     xr(:,m) = xd;                             % Buffer the dechirped signal
 end
-
-hrdresp = phased.RangeDopplerResponse('PropagationSpeed',c,...
-    'DopplerOutput','Speed','OperatingFrequency',fc,'SampleRate',fs,...
-    'RangeMethod','FFT','SweepSlope',sweep_slope,...
-    'RangeFFTLengthSource','Property','RangeFFTLength',2048,...
-    'DopplerFFTLengthSource','Property','DopplerFFTLength',256);
-
-clf;
-plotResponse(hrdresp,xr);                     % Plot range Doppler map
-axis([-v_max v_max 0 range_max])
-clim = caxis;
-
-Dn = fix(fs/(2*fb_max));
-for m = size(xr,2):-1:1
-    xr_d(:,m) = decimate(xr(:,m),Dn,'FIR');
-end
-fs_d = fs/Dn;
-
-fb_rng = rootmusic(pulsint(xr_d,'coherent'),1,fs_d);
-rng_est = beat2range(fb_rng,sweep_slope,c)      %output rng_est
-
-peak_loc = val2ind(rng_est,c/(fs_d*2));
-fd = -rootmusic(xr_d(peak_loc,:),1,1/tm);
-v_est = dop2speed(fd,lambda)/2                  %output v_est
-
-deltaR = rdcoupling(fd,sweep_slope,c)           %output deltaR
-
-hwavtr = clone(hwav);
-release(hwavtr);
-tm = 2e-3;
-hwavtr.SweepTime = tm;
-sweep_slope = bw/tm;
-
-deltaR = rdcoupling(fd,sweep_slope,c)           %output deltaR
-
-v_unambiguous = dop2speed(1/(2*tm),lambda)/2    %output v_unambiguous
-
-hwavtr.SweepDirection = 'Triangle';
-
-Nsweep = 16;
-xr = helperFMCWSimulate(Nsweep,hwavtr,hradarplatform,hcarplatform,...
-    htx,hchannel,hcar,hrx);
-
-fbu_rng = rootmusic(pulsint(xr(:,1:2:end),'coherent'),1,fs);
-fbd_rng = rootmusic(pulsint(xr(:,2:2:end),'coherent'),1,fs);
-
-rng_est = beat2range([fbu_rng fbd_rng],sweep_slope,c)       %output rng_est
-
-fd = -(fbu_rng+fbd_rng)/2;
-v_est = dop2speed(fd,lambda)/2                  %output v_est
-
-chant = phased.TwoRayChannel('PropagationSpeed',c,...
-    'OperatingFrequency',fc,'SampleRate',fs);
-chanr = phased.TwoRayChannel('PropagationSpeed',c,...
-    'OperatingFrequency',fc,'SampleRate',fs);
-Nsweep = 64;
-xr = helperFMCWTwoRaySimulate(Nsweep,hwav,hradarplatform,hcarplatform,...
-    htx,chant,chanr,hcar,hrx);
-plotResponse(hrdresp,xr);                     % Plot range Doppler map
-axis([-v_max v_max 0 range_max]);
-caxis(clim);
