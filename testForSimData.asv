@@ -1,0 +1,11 @@
+dt=ff_d-ff;
+% max(dt)
+dt(dt>0)=[];
+% max(dt)
+dt_m=mean(dt)
+dtt=abs(dt-dt_m))
+% ts=dt-dtt;
+% max(ts)
+% min(ts)
+% mean(ts)
+% dte=dt(find((dt-dtt)>)
